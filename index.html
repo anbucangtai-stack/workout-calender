@@ -144,30 +144,38 @@ document.getElementById("historyChatBtn").onclick=()=>window.open("https://chatg
 document.getElementById("applyAiBtn").onclick=()=>{
  let raw=document.getElementById("aiResult").value.trim();
  try {
+  // ChatGPTが配列の括弧を \[ \] と返した場合や、コードブロック付き回答も補正する。
+  let cleaned=raw.replace(/```(?:json|text)?/gi,"").replace(/```/g,"").replace(/\\\[/g,"[").replace(/\\\]/g,"]").trim();
   let obj=null;
-  // First try JSON for backward compatibility.
-  try { obj=JSON.parse(raw); } catch(e) {}
+  try { obj=JSON.parse(cleaned); } catch(e) {
+   const a=cleaned.indexOf("{"); const b=cleaned.lastIndexOf("}");
+   if(a>=0 && b>a) { try { obj=JSON.parse(cleaned.slice(a,b+1)); } catch(e2) {} }
+  }
   let tag="AI調整", rest=false, items=[];
   if(obj && Array.isArray(obj.items)) {
    tag=typeof obj.tag==="string"?obj.tag:tag; rest=!!obj.rest;
-   items=obj.items.filter(it=>it&&typeof it.name==="string"&&typeof it.detail==="string").map(it=>[it.name.trim(),it.detail.trim()]);
+   items=obj.items.filter(it=>it&&typeof it.name==="string").map(it=>[it.name.trim(),String(it.detail||it.reps||it.description||"回数・時間は回答を確認").trim()]);
   } else {
-   const lines=raw.split(/\\r?\\n/).map(x=>x.trim()).filter(Boolean);
+   // Mobile ChatGPT may paste multiple "name | reps | detail" entries as one long line.
+   // Insert line breaks before common exercise names when they are followed by a pipe.
+   const normalized=cleaned.replace(/\s+(?=(?:全身の軽いウォームアップ|ウォームアップ|早歩き|その場足踏み|スクワット|ヒップリフト|バードドッグ|リバーススノーエンジェル|全身ストレッチ|壁腕立て伏せ|壁腕立て|膝つき腕立て伏せ|膝つき腕立て|腕立て伏せ|腕立て|プランク|サイドプランク|ランジ|カーフレイズ|デッドバグ|バイシクルクランチ|グルートブリッジ|休養日)\s*[|｜])/g,"\n");
+   const lines=normalized.split(/\r?\n/).map(x=>x.trim()).filter(Boolean);
    for(const line of lines){
-    const t=line.match(/^(?:メニュー区分|区分|タグ)[:：]\\s*(.+)$/); if(t) tag=t[1].replace(/[（(].*$/,"").trim();
-    const r=line.match(/^休養日[:：]\\s*(はい|いいえ|true|false)/i); if(r) rest=["はい","true"].includes(r[1].toLowerCase());
-    let m=line.match(/^\\d+[.．、)）]?\\s*(.+?)[｜|]\s*(.+)$/);
-    if(!m) m=line.match(/^[-・*]\\s*(.+?)[｜|]\s*(.+)$/);
-    if(m) items.push([m[1].trim(),m[2].trim()]);
+    const t=line.match(/^(?:メニュー区分|区分|タグ|メニュー)[:：]\s*(.+)$/); if(t) tag=t[1].replace(/[（(].*$/," ").trim();
+    const r=line.match(/^休養日[:：]\s*(はい|いいえ|true|false)/i); if(r) rest=["はい","true"].includes(r[1].toLowerCase());
+    let m=line.match(/^(?:\d+[.．、)）]?\s*)?(.+?)[｜|]\s*(.+)$/);
+    if(!m) m=line.match(/^(?:[-・*•]\s*)(.+?)[：:]\s*(.+)$/);
+    if(!m) m=line.match(/^(?:\d+[.．、)）]?\s*)([^|｜:：]+?)\s{2,}(.+)$/);
+    if(m && !/^(種目名|例)$/i.test(m[1].trim())) items.push([m[1].replace(/^[-・*•]\s*/,"").trim(),m[2].trim()]);
    }
   }
   if(!items.length) throw new Error("no items");
   const target=new Date(today);target.setDate(target.getDate()+1);const r=dayRecord(target);
   r.customName="AI調整メニュー";r.customTag=tag;r.customRest=rest;r.customItems=items;
   persist();selected=new Date(target);view=new Date(target.getFullYear(),target.getMonth(),1);renderAll();
-  document.getElementById("aiStatus").textContent=`${dateLabel(target)}のメニューに登録しました。カレンダーの日付を選ぶと確認できます。`;
+  document.getElementById("aiStatus").textContent=`${dateLabel(target)}のメニューに登録しました（${items.length}種目）。カレンダーの日付を選ぶと確認できます。`;
  } catch(e) {
-  document.getElementById("aiStatus").textContent="登録できませんでした。ChatGPTの回答を「1. 種目名｜回数や時間」の形で貼り付けてください。";
+  document.getElementById("aiStatus").textContent="登録できませんでした。回答全体を貼り付けてください。JSONでも「種目名｜回数・時間」の文章でも取り込めます。";
  }
 };
 let installPrompt=null;
