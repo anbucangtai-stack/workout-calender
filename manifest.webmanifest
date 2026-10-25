@@ -1,0 +1,13 @@
+{
+  "name": "筋トレカレンダー",
+  "short_name": "筋トレ",
+  "description": "筋トレメニューと達成記録を管理",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#f3f5f9",
+  "theme_color": "#111827",
+  "icons": [
+    {"src":"./icon.svg","sizes":"any","type":"image/svg+xml","purpose":"any maskable"}
+  ]
+}

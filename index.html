@@ -1,0 +1,119 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#111827">
+<meta name="description" content="筋トレメニューをカレンダーで管理し、毎日の達成状況を記録するアプリ">
+<link rel="manifest" href="./manifest.webmanifest">
+<link rel="icon" href="./icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="./icon.svg">
+<title>筋トレカレンダー</title>
+<style>
+:root{--bg:#f3f5f9;--card:#fff;--ink:#172033;--muted:#687386;--line:#e3e8f0;--accent:#2563eb;--green:#16a34a;--orange:#f59e0b}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);font-family:-apple-system,BlinkMacSystemFont,"Hiragino Kaku Gothic ProN","Yu Gothic",sans-serif;color:var(--ink)}
+header{background:#111827;color:white;padding:22px 16px 25px}header .inner,main{max-width:1000px;margin:auto}header h1{font-size:25px;margin:0 0 6px}header p{margin:0;color:#cbd5e1;font-size:14px}
+main{padding:16px;display:grid;gap:16px}.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}.stat,.panel{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:15px;box-shadow:0 3px 12px #17203308}.stat .num{font-size:25px;font-weight:800;margin-top:4px}.stat .label{font-size:12px;color:var(--muted)}
+.layout{display:grid;grid-template-columns:1.05fr .95fr;gap:16px}.panel h2{font-size:17px;margin:0 0 12px}.monthbar{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}.monthbar strong{font-size:17px}.iconbtn{border:1px solid var(--line);background:white;border-radius:9px;padding:7px 11px;font-size:18px;cursor:pointer}
+.calendar{display:grid;grid-template-columns:repeat(7,1fr);gap:5px}.dow{text-align:center;color:var(--muted);font-size:11px;padding:4px 0}.day{min-height:54px;border:1px solid var(--line);background:#fff;border-radius:9px;padding:5px 2px;text-align:center;cursor:pointer;position:relative}.day .n{font-size:13px}.day .mark{font-size:12px;margin-top:4px;display:block}.day.out{opacity:.32}.day.selected{border:2px solid var(--accent);background:#eff6ff}.day.done{background:#ecfdf3;border-color:#86efac}.day.rest{background:#f8fafc}.legend{display:flex;gap:12px;flex-wrap:wrap;color:var(--muted);font-size:11px;margin-top:10px}
+.date-title{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:12px}.date-title h2{margin:0}.tag{font-size:11px;border-radius:999px;padding:5px 9px;background:#eaf1ff;color:#1d4ed8;font-weight:700}
+.exercise{border:1px solid var(--line);border-radius:12px;padding:11px;margin:9px 0;display:flex;gap:10px;align-items:flex-start}.exercise input{width:20px;height:20px;accent-color:var(--green);margin-top:2px;flex-shrink:0}.exercise .name{font-weight:750;font-size:14px}.exercise .detail{font-size:12px;color:var(--muted);margin-top:4px;line-height:1.5}.exercise.checked{background:#f0fdf4;border-color:#bbf7d0}.empty{text-align:center;padding:25px 10px;color:var(--muted)}
+button,.button{font-family:inherit;cursor:pointer}.primary{background:var(--accent);color:#fff;border:0;border-radius:10px;padding:11px 14px;font-weight:700}.secondary{background:white;border:1px solid var(--line);border-radius:10px;padding:10px 12px;color:var(--ink);font-weight:650}.actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px}.progress{height:8px;background:#e9edf4;border-radius:99px;overflow:hidden;margin:12px 0 5px}.progress div{height:100%;background:var(--green);width:0;transition:width .2s}.small{font-size:12px;color:var(--muted)}textarea{width:100%;min-height:76px;border:1px solid var(--line);border-radius:10px;padding:10px;font:inherit;font-size:13px;resize:vertical}input[type=text]{width:100%;padding:10px;border:1px solid var(--line);border-radius:9px;font:inherit}.note-label{font-size:12px;font-weight:700;display:block;margin:14px 0 6px}.bottom-note{font-size:12px;line-height:1.65;color:var(--muted)}.settings{display:grid;grid-template-columns:1fr 1fr;gap:10px}.settings label{font-size:12px;color:var(--muted)}.settings input,.settings select{width:100%;padding:9px;border:1px solid var(--line);border-radius:9px;margin-top:5px;background:#fff}
+@media(max-width:700px){.layout{grid-template-columns:1fr}.stats{gap:7px}.stat{padding:11px}.stat .num{font-size:21px}.day{min-height:47px}.panel{padding:13px}header h1{font-size:22px}}
+</style>
+</head>
+<body>
+<header><div class="inner"><h1>💪 筋トレカレンダー</h1><p>今日やること・達成状況・積み重ねをひと目で管理</p></div></header>
+<main>
+<section class="stats">
+ <div class="stat"><div class="label">今月の達成日</div><div class="num" id="monthDone">0日</div></div>
+ <div class="stat"><div class="label">今日の進捗</div><div class="num" id="todayProgress">0%</div></div>
+ <div class="stat"><div class="label">連続達成日数</div><div class="num" id="streak">0日</div></div>
+</section>
+<div class="layout">
+<section class="panel">
+ <div class="monthbar"><button class="iconbtn" id="prev" aria-label="前の月">‹</button><strong id="monthLabel"></strong><button class="iconbtn" id="next" aria-label="次の月">›</button></div>
+ <div class="calendar" id="calendar"></div>
+ <div class="legend"><span>🟢 達成</span><span>🔵 選択中</span><span>○ 休養日</span><span>・ 未完了</span></div>
+ <div class="actions"><button class="secondary" id="todayBtn">今日に戻る</button><button class="secondary" id="exportBtn">記録を書き出す</button></div>
+</section>
+<section class="panel">
+ <div class="date-title"><h2 id="selectedLabel">今日のメニュー</h2><span class="tag" id="typeTag">全身</span></div>
+ <div class="small" id="intro">自重トレーニング・器具なし</div>
+ <div class="progress"><div id="progressBar"></div></div><div class="small" id="progressText">0 / 0 種目完了</div>
+ <div id="exerciseList"></div>
+ <label class="note-label" for="note">今日のメモ（きつさ・体調など）</label>
+ <textarea id="note" placeholder="例：腕立てが前より楽になった！"></textarea>
+ <div class="actions"><button class="primary" id="finishBtn">この日の達成状況を保存</button><button class="secondary" id="clearBtn">チェックを外す</button></div>
+ <p class="bottom-note">※「保存」はこの端末のブラウザ内に記録します。同じブラウザで開けば続きから使えます。</p>
+</section>
+</div>
+<section class="panel">
+<h2>🤖 ChatGPTにメニューを相談</h2>
+<p class="bottom-note">このサイト単体ではChatGPTが自動で通信する設定にはなっていません。下のボタンで、あなた向けのメニューを相談するための文章をコピーできます。ChatGPTに貼り付けて、提案されたメニューを記録してください。</p>
+<div class="settings">
+ <div><label for="goal">目標</label><select id="goal"><option>細マッチョ・全身をバランスよく鍛える</option><option>筋力アップを優先</option><option>体力づくりを優先</option></select></div>
+ <div><label for="minutes">1日の時間</label><select id="minutes"><option>30分</option><option selected>60分</option><option>無理のない時間で調整</option></select></div>
+</div>
+<div class="actions"><button class="primary" id="promptBtn">相談文をコピー</button><button class="secondary" id="chatBtn">ChatGPTを開く</button><button class="secondary" id="installBtn" hidden>ホーム画面アプリとして追加</button></div>
+<p class="bottom-note" id="copyStatus" aria-live="polite"></p>
+</section>
+<p class="bottom-note">安全のため、痛みが出たら中止し、フォームを優先してください。毎日同じ筋肉を強く追い込む必要はありません。休養日も成長に必要です。</p>
+</main>
+<script>
+const plan = {
+ 0:{name:"休養・軽いストレッチ",tag:"休養日",rest:true,items:[["軽い全身ストレッチ","5〜10分・痛くない範囲"],["ゆっくり散歩（任意）","10〜20分・気持ちよいペース"]]},
+ 1:{name:"上半身",tag:"上半身",items:[["腕立て伏せ","8〜12回 × 3セット（難しければ膝つき）"],["膝つき／通常プランク","20〜40秒 × 3セット"],["リバーススノーエンジェル","10〜15回 × 3セット"],["肩まわりストレッチ","3〜5分"]]},
+ 2:{name:"下半身・体幹",tag:"下半身",items:[["スクワット","12〜15回 × 3セット"],["バックランジ","左右8〜10回 × 3セット"],["ヒップリフト","12〜15回 × 3セット"],["デッドバグ","左右8〜10回 × 2セット"]]},
+ 3:{name:"軽めの日",tag:"軽め",items:[["早歩き／その場足踏み","10〜15分"],["バードドッグ","左右8回 × 2セット"],["全身ストレッチ","8〜10分"]]},
+ 4:{name:"上半身",tag:"上半身",items:[["腕立て伏せ","8〜12回 × 3セット"],["パイクプッシュアップ（できる範囲）","5〜8回 × 2セット。難しければ省略"],["プランク","20〜40秒 × 3セット"],["リバーススノーエンジェル","10〜15回 × 3セット"]]},
+ 5:{name:"下半身・体幹",tag:"下半身",items:[["スクワット","12〜15回 × 3セット"],["カーフレイズ","15〜20回 × 3セット"],["ヒップリフト","12〜15回 × 3セット"],["サイドプランク","左右15〜25秒 × 2セット"]]},
+ 6:{name:"回復・振り返り",tag:"回復日",rest:true,items:[["軽いストレッチ","5〜10分"],["今週のメモを書く","できたことを1つ、次に試すことを1つ"]]}
+};
+const today=new Date();let selected=new Date(today.getFullYear(),today.getMonth(),today.getDate());let view=new Date(today.getFullYear(),today.getMonth(),1);
+let data={};try{data=JSON.parse(localStorage.getItem("workoutCalendarData")||"{}")}catch(e){data={}}
+const key=d=>`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
+const same=(a,b)=>key(a)===key(b);
+const dayPlan=d=>plan[d.getDay()];
+function dayRecord(d){let k=key(d);if(!data[k])data[k]={checks:{},note:"",saved:false};return data[k]}
+function persist(){localStorage.setItem("workoutCalendarData",JSON.stringify(data))}
+function renderCalendar(){
+ document.getElementById("monthLabel").textContent=`${view.getFullYear()}年${view.getMonth()+1}月`;
+ const root=document.getElementById("calendar");root.innerHTML="";
+ ["日","月","火","水","木","金","土"].forEach(x=>{let e=document.createElement("div");e.className="dow";e.textContent=x;root.append(e)});
+ const first=new Date(view.getFullYear(),view.getMonth(),1), start=new Date(first);start.setDate(1-first.getDay());
+ for(let i=0;i<42;i++){let d=new Date(start);d.setDate(start.getDate()+i);let rec=data[key(d)],p=dayPlan(d),done=rec&&p.items.length>0&&p.items.every((_,j)=>rec.checks[j]);
+ let b=document.createElement("button");b.className="day"+(d.getMonth()!==view.getMonth()?" out":"")+(same(d,selected)?" selected":"")+(done?" done":"")+(p.rest?" rest":"");b.innerHTML=`<span class="n">${d.getDate()}</span><span class="mark">${done?"✓":p.rest?"○":rec&&Object.values(rec.checks).some(Boolean)?"◔":""}</span>`;b.onclick=()=>{selected=new Date(d);renderAll()};root.append(b)}
+}
+function renderWorkout(){
+ const p=dayPlan(selected),rec=dayRecord(selected);document.getElementById("selectedLabel").textContent=`${selected.getMonth()+1}/${selected.getDate()}（${"日月火水木金土"[selected.getDay()]}）のメニュー`;
+ document.getElementById("typeTag").textContent=p.tag;document.getElementById("intro").textContent=p.rest?"回復もトレーニングの一部です":"自重トレーニング・器具なし";
+ const list=document.getElementById("exerciseList");list.innerHTML="";
+ p.items.forEach((it,i)=>{let label=document.createElement("label");label.className="exercise"+(rec.checks[i]?" checked":"");let cb=document.createElement("input");cb.type="checkbox";cb.checked=!!rec.checks[i];cb.onchange=()=>{rec.checks[i]=cb.checked;persist();renderAll()};let body=document.createElement("div");body.innerHTML=`<div class="name">${it[0]}</div><div class="detail">${it[1]}</div>`;label.append(cb,body);list.append(label)});
+ document.getElementById("note").value=rec.note||"";document.getElementById("note").oninput=e=>{rec.note=e.target.value;persist()};
+ let done=p.items.filter((_,i)=>rec.checks[i]).length,percent=Math.round(done/p.items.length*100);document.getElementById("progressBar").style.width=percent+"%";document.getElementById("progressText").textContent=`${done} / ${p.items.length} 種目完了`;document.getElementById("todayProgress").textContent=percent+"%";
+}
+function renderStats(){
+ let y=selected.getFullYear(),m=selected.getMonth(),done=0;for(let d=1;d<=new Date(y,m+1,0).getDate();d++){let dt=new Date(y,m,d),r=data[key(dt)],p=dayPlan(dt);if(r&&p.items.every((_,i)=>r.checks[i]))done++}document.getElementById("monthDone").textContent=done+"日";
+ let streak=0,d=new Date(today);while(true){let r=data[key(d)],p=dayPlan(d);if(r&&p.items.every((_,i)=>r.checks[i])){streak++;d.setDate(d.getDate()-1)}else break}document.getElementById("streak").textContent=streak+"日";
+}
+function renderAll(){renderCalendar();renderWorkout();renderStats()}
+document.getElementById("prev").onclick=()=>{view.setMonth(view.getMonth()-1);renderCalendar()};document.getElementById("next").onclick=()=>{view.setMonth(view.getMonth()+1);renderCalendar()};
+document.getElementById("todayBtn").onclick=()=>{selected=new Date(today);view=new Date(today.getFullYear(),today.getMonth(),1);renderAll()};
+document.getElementById("finishBtn").onclick=()=>{let r=dayRecord(selected);r.saved=true;persist();let installPrompt=null;
+window.addEventListener("beforeinstallprompt",e=>{e.preventDefault();installPrompt=e;document.getElementById("installBtn").hidden=false;});
+document.getElementById("installBtn").onclick=async()=>{if(installPrompt){installPrompt.prompt();await installPrompt.userChoice;installPrompt=null;document.getElementById("installBtn").hidden=true;}else{alert("iPhoneの場合はSafariの共有ボタン →「ホーム画面に追加」を選んでください。");}};
+if("serviceWorker" in navigator && (location.protocol==="https:" || location.hostname==="localhost")){window.addEventListener("load",()=>navigator.serviceWorker.register("./sw.js").catch(()=>{}));}
+renderAll();alert("この日の記録を保存しました！")};
+document.getElementById("clearBtn").onclick=()=>{let r=dayRecord(selected);r.checks={};persist();renderAll()};
+document.getElementById("exportBtn").onclick=()=>{let blob=new Blob([JSON.stringify(data,null,2)],{type:"application/json"}),url=URL.createObjectURL(blob),a=document.createElement("a");a.href=url;a.download="筋トレ記録.json";a.click();URL.revokeObjectURL(url)};
+function promptText(){return `あなたは安全性を重視する筋トレコーチです。年齢は15〜18歳、現在の体型は普通、目標は「${document.getElementById("goal").value}」、自宅で器具なし、1日${document.getElementById("minutes").value}を希望しています。長期的に続けられる1週間のカレンダー形式メニューを作ってください。各種目の回数・セット・休憩時間・フォームの注意点・難しい場合の代替案を具体的に書いてください。毎日同じ部位を追い込みすぎず、休養日も入れてください。痛みが出たら中止する前提で、無理のない内容にしてください。`;}
+document.getElementById("promptBtn").onclick=async()=>{let t=promptText();try{await navigator.clipboard.writeText(t);document.getElementById("copyStatus").textContent="相談文をコピーしました。ChatGPTを開いて貼り付けてください。"}catch(e){let ta=document.createElement("textarea");ta.value=t;document.body.append(ta);ta.select();document.execCommand("copy");ta.remove();document.getElementById("copyStatus").textContent="相談文をコピーしました。ChatGPTに貼り付けてください。"}};
+document.getElementById("chatBtn").onclick=()=>window.open("https://chatgpt.com/","_blank","noopener");
+let installPrompt=null;
+window.addEventListener("beforeinstallprompt",e=>{e.preventDefault();installPrompt=e;document.getElementById("installBtn").hidden=false;});
+document.getElementById("installBtn").onclick=async()=>{if(installPrompt){installPrompt.prompt();await installPrompt.userChoice;installPrompt=null;document.getElementById("installBtn").hidden=true;}else{alert("iPhoneの場合はSafariの共有ボタン →「ホーム画面に追加」を選んでください。");}};
+if("serviceWorker" in navigator && (location.protocol==="https:" || location.hostname==="localhost")){window.addEventListener("load",()=>navigator.serviceWorker.register("./sw.js").catch(()=>{}));}
+renderAll();
+</script>
+</body></html>
