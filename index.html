@@ -60,9 +60,9 @@ button,.button{font-family:inherit;cursor:pointer}.primary{background:var(--acce
 </section>
 <section class="panel" id="aiAdjustPanel">
 <h2>🧠 記録を見て、翌日のメニューを調整</h2>
-<p class="bottom-note">この機能は無料で使えます。直近7日間のチェックとメモを含む相談文をコピーし、ChatGPTに貼り付けてください。AIの回答を下の欄に貼り付けて登録すると、翌日のカレンダーに反映されます。サイトからAIへ自動送信はしません。</p>
+<p class="bottom-note">無料で使えます。直近7日間の記録付き相談文をコピーしてChatGPTに送ります。返ってきた回答は、JSON形式でなくても下の欄に貼り付けて登録できます。サイトからAIへ自動送信はしません。</p>
 <div class="actions"><button class="primary" id="historyPromptBtn">記録付きの相談文をコピー</button><button class="secondary" id="historyChatBtn">ChatGPTを開く</button></div>
-<label class="note-label" for="aiResult">ChatGPTの回答（JSON形式）をここに貼り付け</label>
+<label class="note-label" for="aiResult">ChatGPTの回答をここに貼り付け（JSONでなくてもOK）</label>
 <textarea id="aiResult" style="min-height:130px" placeholder='{"tag":"上半身","items":[{"name":"腕立て伏せ","detail":"8〜12回 × 2セット、休憩60〜90秒"},{"name":"プランク","detail":"20〜30秒 × 2セット"}]}'></textarea>
 <div class="actions"><button class="primary" id="applyAiBtn">翌日のメニューとして登録</button></div>
 <p class="bottom-note" id="aiStatus" aria-live="polite"></p>
@@ -141,7 +141,35 @@ ${rows.join("\n")}
 }
 document.getElementById("historyPromptBtn").onclick=async()=>{const t=historyPromptText();try{await navigator.clipboard.writeText(t);document.getElementById("aiStatus").textContent="直近7日間の記録付き相談文をコピーしました。ChatGPTを開いて貼り付けてください。"}catch(e){document.getElementById("aiResult").value=t;document.getElementById("aiStatus").textContent="自動コピーできなかったため、相談文を下の欄に表示しました。全文をコピーしてChatGPTに貼り付けてください。"}};
 document.getElementById("historyChatBtn").onclick=()=>window.open("https://chatgpt.com/","_blank","noopener");
-document.getElementById("applyAiBtn").onclick=()=>{let raw=document.getElementById("aiResult").value.trim();try{const obj=JSON.parse(raw);if(!obj||!Array.isArray(obj.items)||obj.items.length<1||!obj.items.every(it=>typeof it.name==="string"&&typeof it.detail==="string")){throw new Error("format")};const target=new Date(today);target.setDate(target.getDate()+1);const r=dayRecord(target);r.customName="AI調整メニュー";r.customTag=typeof obj.tag==="string"?obj.tag:"AI調整";r.customRest=!!obj.rest;r.customItems=obj.items.map(it=>[it.name,it.detail]);persist();selected=new Date(target);view=new Date(target.getFullYear(),target.getMonth(),1);renderAll();document.getElementById("aiStatus").textContent=`${dateLabel(target)}のメニューに登録しました。カレンダーの日付を選ぶと確認できます。`}catch(e){document.getElementById("aiStatus").textContent="登録できませんでした。ChatGPTの回答がJSONだけになっているか確認して、もう一度貼り付けてください。"}};
+document.getElementById("applyAiBtn").onclick=()=>{
+ let raw=document.getElementById("aiResult").value.trim();
+ try {
+  let obj=null;
+  // First try JSON for backward compatibility.
+  try { obj=JSON.parse(raw); } catch(e) {}
+  let tag="AI調整", rest=false, items=[];
+  if(obj && Array.isArray(obj.items)) {
+   tag=typeof obj.tag==="string"?obj.tag:tag; rest=!!obj.rest;
+   items=obj.items.filter(it=>it&&typeof it.name==="string"&&typeof it.detail==="string").map(it=>[it.name.trim(),it.detail.trim()]);
+  } else {
+   const lines=raw.split(/\\r?\\n/).map(x=>x.trim()).filter(Boolean);
+   for(const line of lines){
+    const t=line.match(/^(?:メニュー区分|区分|タグ)[:：]\\s*(.+)$/); if(t) tag=t[1].replace(/[（(].*$/,"").trim();
+    const r=line.match(/^休養日[:：]\\s*(はい|いいえ|true|false)/i); if(r) rest=["はい","true"].includes(r[1].toLowerCase());
+    let m=line.match(/^\\d+[.．、)）]?\\s*(.+?)[｜|]\s*(.+)$/);
+    if(!m) m=line.match(/^[-・*]\\s*(.+?)[｜|]\s*(.+)$/);
+    if(m) items.push([m[1].trim(),m[2].trim()]);
+   }
+  }
+  if(!items.length) throw new Error("no items");
+  const target=new Date(today);target.setDate(target.getDate()+1);const r=dayRecord(target);
+  r.customName="AI調整メニュー";r.customTag=tag;r.customRest=rest;r.customItems=items;
+  persist();selected=new Date(target);view=new Date(target.getFullYear(),target.getMonth(),1);renderAll();
+  document.getElementById("aiStatus").textContent=`${dateLabel(target)}のメニューに登録しました。カレンダーの日付を選ぶと確認できます。`;
+ } catch(e) {
+  document.getElementById("aiStatus").textContent="登録できませんでした。ChatGPTの回答を「1. 種目名｜回数や時間」の形で貼り付けてください。";
+ }
+};
 let installPrompt=null;
 window.addEventListener("beforeinstallprompt",e=>{e.preventDefault();installPrompt=e;document.getElementById("installBtn").hidden=false;});
 document.getElementById("installBtn").onclick=async()=>{if(installPrompt){installPrompt.prompt();await installPrompt.userChoice;installPrompt=null;document.getElementById("installBtn").hidden=true;}else{alert("iPhoneの場合はSafariの共有ボタン →「ホーム画面に追加」を選んでください。");}};
