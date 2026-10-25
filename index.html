@@ -58,6 +58,15 @@ button,.button{font-family:inherit;cursor:pointer}.primary{background:var(--acce
 <div class="actions"><button class="primary" id="promptBtn">相談文をコピー</button><button class="secondary" id="chatBtn">ChatGPTを開く</button><button class="secondary" id="installBtn" hidden>ホーム画面アプリとして追加</button></div>
 <p class="bottom-note" id="copyStatus" aria-live="polite"></p>
 </section>
+<section class="panel" id="aiAdjustPanel">
+<h2>🧠 記録を見て、翌日のメニューを調整</h2>
+<p class="bottom-note">この機能は無料で使えます。直近7日間のチェックとメモを含む相談文をコピーし、ChatGPTに貼り付けてください。AIの回答を下の欄に貼り付けて登録すると、翌日のカレンダーに反映されます。サイトからAIへ自動送信はしません。</p>
+<div class="actions"><button class="primary" id="historyPromptBtn">記録付きの相談文をコピー</button><button class="secondary" id="historyChatBtn">ChatGPTを開く</button></div>
+<label class="note-label" for="aiResult">ChatGPTの回答（JSON形式）をここに貼り付け</label>
+<textarea id="aiResult" style="min-height:130px" placeholder='{"tag":"上半身","items":[{"name":"腕立て伏せ","detail":"8〜12回 × 2セット、休憩60〜90秒"},{"name":"プランク","detail":"20〜30秒 × 2セット"}]}'></textarea>
+<div class="actions"><button class="primary" id="applyAiBtn">翌日のメニューとして登録</button></div>
+<p class="bottom-note" id="aiStatus" aria-live="polite"></p>
+</section>
 <p class="bottom-note">安全のため、痛みが出たら中止し、フォームを優先してください。毎日同じ筋肉を強く追い込む必要はありません。休養日も成長に必要です。</p>
 </main>
 <script>
@@ -74,7 +83,7 @@ const today=new Date();let selected=new Date(today.getFullYear(),today.getMonth(
 let data={};try{data=JSON.parse(localStorage.getItem("workoutCalendarData")||"{}")}catch(e){data={}}
 const key=d=>`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
 const same=(a,b)=>key(a)===key(b);
-const dayPlan=d=>plan[d.getDay()];
+const dayPlan=d=>{const r=data[key(d)];if(r&&Array.isArray(r.customItems))return {name:r.customName||"AI調整メニュー",tag:r.customTag||"AI調整",rest:!!r.customRest,items:r.customItems};return plan[d.getDay()]};
 function dayRecord(d){let k=key(d);if(!data[k])data[k]={checks:{},note:"",saved:false};return data[k]}
 function persist(){localStorage.setItem("workoutCalendarData",JSON.stringify(data))}
 function renderCalendar(){
@@ -110,6 +119,29 @@ document.getElementById("exportBtn").onclick=()=>{let blob=new Blob([JSON.string
 function promptText(){return `あなたは安全性を重視する筋トレコーチです。年齢は15〜18歳、現在の体型は普通、目標は「${document.getElementById("goal").value}」、自宅で器具なし、1日${document.getElementById("minutes").value}を希望しています。長期的に続けられる1週間のカレンダー形式メニューを作ってください。各種目の回数・セット・休憩時間・フォームの注意点・難しい場合の代替案を具体的に書いてください。毎日同じ部位を追い込みすぎず、休養日も入れてください。痛みが出たら中止する前提で、無理のない内容にしてください。`;}
 document.getElementById("promptBtn").onclick=async()=>{let t=promptText();try{await navigator.clipboard.writeText(t);document.getElementById("copyStatus").textContent="相談文をコピーしました。ChatGPTを開いて貼り付けてください。"}catch(e){let ta=document.createElement("textarea");ta.value=t;document.body.append(ta);ta.select();document.execCommand("copy");ta.remove();document.getElementById("copyStatus").textContent="相談文をコピーしました。ChatGPTに貼り付けてください。"}};
 document.getElementById("chatBtn").onclick=()=>window.open("https://chatgpt.com/","_blank","noopener");
+function dateLabel(d){return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`}
+function historyPromptText(){
+ const target=new Date(today);target.setDate(target.getDate()+1);
+ const rows=[];
+ for(let i=6;i>=0;i--){const d=new Date(today);d.setDate(d.getDate()-i);const r=data[key(d)];const p=dayPlan(d);const checks=r?.checks||{};const done=p.items.filter((_,j)=>checks[j]).length;const names=p.items.map((it,j)=>`${checks[j]?"[完了]":"[未完了]"}${it[0]}（${it[1]}）`).join("、");rows.push(`${dateLabel(d)}：${p.name}、達成 ${done}/${p.items.length}。種目：${names||"なし"}。メモ：${r?.note||"なし"}`)}
+ return `あなたは安全を最優先する筋トレコーチです。ユーザーは15〜18歳、普通体型、目標は細マッチョ、自宅で器具なし、長期的に続けたい人です。明日（${dateLabel(target)}）のメニューを、直近7日間の実施記録と体調メモに合わせて調整してください。
+
+【直近7日間の記録】
+${rows.join("\n")}
+
+【ルール】
+- 痛みや強い疲労があれば負荷を下げ、休養を優先する。メモに痛みがあれば該当運動を避ける。
+- 同じ筋肉を連日強く追い込まない。休養・軽めの日も選択肢にする。
+- 年齢に配慮し、限界まで追い込む・無理な減量・危険な種目は勧めない。器具なしで安全にできる内容にする。
+- 1日${document.getElementById("minutes").value}を目安にするが、回復が必要なら短くしてよい。目標は「${document.getElementById("goal").value}」。
+- 回数、セット、休憩時間、簡単なフォーム注意を各種目に含める。
+- 下記のJSONだけを返し、説明文やMarkdownのコードブロックは付けない。JSONは必ず有効な形式にする。
+{"tag":"上半身/下半身/全身/軽め/休養日 のいずれか","rest":false,"items":[{"name":"種目名","detail":"回数・セット・休憩・注意点"}]}
+休養日にする場合は rest を true にし、itemsには軽いストレッチなどを入れてください。`;
+}
+document.getElementById("historyPromptBtn").onclick=async()=>{const t=historyPromptText();try{await navigator.clipboard.writeText(t);document.getElementById("aiStatus").textContent="直近7日間の記録付き相談文をコピーしました。ChatGPTを開いて貼り付けてください。"}catch(e){document.getElementById("aiResult").value=t;document.getElementById("aiStatus").textContent="自動コピーできなかったため、相談文を下の欄に表示しました。全文をコピーしてChatGPTに貼り付けてください。"}};
+document.getElementById("historyChatBtn").onclick=()=>window.open("https://chatgpt.com/","_blank","noopener");
+document.getElementById("applyAiBtn").onclick=()=>{let raw=document.getElementById("aiResult").value.trim();try{const obj=JSON.parse(raw);if(!obj||!Array.isArray(obj.items)||obj.items.length<1||!obj.items.every(it=>typeof it.name==="string"&&typeof it.detail==="string")){throw new Error("format")};const target=new Date(today);target.setDate(target.getDate()+1);const r=dayRecord(target);r.customName="AI調整メニュー";r.customTag=typeof obj.tag==="string"?obj.tag:"AI調整";r.customRest=!!obj.rest;r.customItems=obj.items.map(it=>[it.name,it.detail]);persist();selected=new Date(target);view=new Date(target.getFullYear(),target.getMonth(),1);renderAll();document.getElementById("aiStatus").textContent=`${dateLabel(target)}のメニューに登録しました。カレンダーの日付を選ぶと確認できます。`}catch(e){document.getElementById("aiStatus").textContent="登録できませんでした。ChatGPTの回答がJSONだけになっているか確認して、もう一度貼り付けてください。"}};
 let installPrompt=null;
 window.addEventListener("beforeinstallprompt",e=>{e.preventDefault();installPrompt=e;document.getElementById("installBtn").hidden=false;});
 document.getElementById("installBtn").onclick=async()=>{if(installPrompt){installPrompt.prompt();await installPrompt.userChoice;installPrompt=null;document.getElementById("installBtn").hidden=true;}else{alert("iPhoneの場合はSafariの共有ボタン →「ホーム画面に追加」を選んでください。");}};
