@@ -155,7 +155,15 @@ document.getElementById("applyAiBtn").onclick=()=>{
   if(obj && Array.isArray(obj.items)) {
    tag=typeof obj.tag==="string"?obj.tag:tag; rest=!!obj.rest;
    items=obj.items.filter(it=>it&&typeof it.name==="string").map(it=>[it.name.trim(),String(it.detail||it.reps||it.description||"回数・時間は回答を確認").trim()]);
-  } else {
+  }
+  // Fallback for mobile clipboard responses where JSON is malformed or brackets/quotes are escaped.
+  if(!items.length) {
+   const loose=cleaned.replace(/\\["']/g,'"').replace(/\\n/g,'
+');
+   const re=/["']?name["']?\s*:\s*["']([^"'\n]+)["'][\s\S]{0,500}?["']?detail["']?\s*:\s*["']([^"']*)["']/g;
+   let mm; while((mm=re.exec(loose))!==null) items.push([mm[1].trim(),mm[2].trim()]);
+  }
+  if(!items.length) {
    // Mobile ChatGPT may paste multiple "name | reps | detail" entries as one long line.
    // Insert line breaks before common exercise names when they are followed by a pipe.
    const normalized=cleaned.replace(/\s+(?=(?:全身の軽いウォームアップ|ウォームアップ|早歩き|その場足踏み|スクワット|ヒップリフト|バードドッグ|リバーススノーエンジェル|全身ストレッチ|壁腕立て伏せ|壁腕立て|膝つき腕立て伏せ|膝つき腕立て|腕立て伏せ|腕立て|プランク|サイドプランク|ランジ|カーフレイズ|デッドバグ|バイシクルクランチ|グルートブリッジ|休養日)\s*[|｜])/g,"\n");
