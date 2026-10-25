@@ -1,34 +1,18 @@
-# 筋トレカレンダー（スマホ対応サイト）
+筋トレカレンダー スマホかんたん更新版
 
-## できること
-- 月間カレンダーと日ごとの筋トレメニュー
-- 種目ごとのチェック、進捗率、達成日数、連続達成日数
-- 体調・感想のメモ、記録JSONの書き出し
-- ChatGPTにメニューを相談するための文章コピー
-- 直近7日間の記録・メモを含む相談文をコピーし、AIの回答を翌日のメニューとして登録
-- PWA対応（公開後、対応ブラウザでホーム画面に追加・一部オフライン利用）
+更新内容：ChatGPTの回答をJSON以外の普通の文章でも取り込めるようにした版です。
 
-## 重要な制限
-この静的サイトはChatGPTのAIと直接接続していません。相談文をコピーしてChatGPTに貼り付ける方式です。
-サイト内でAIが自動的にメニューを作るには、サーバー側のAPI連携が別途必要です。OpenAI APIキーをHTML/JavaScriptに直接書くのは危険なので絶対にしないでください。
-記録はブラウザのlocalStorageに保存されます。ブラウザのデータ削除や別端末への移動で消えることがあるため、「記録を書き出す」でバックアップしてください。
+GitHub Pagesへの更新手順
+1. ZIPを展開します。
+2. GitHubの workout-calender リポジトリを開きます。
+3. Add file > Upload files を選びます。
+4. このフォルダ内の5ファイルをアップロードします。
+   - index.html
+   - manifest.webmanifest
+   - sw.js
+   - icon.svg
+   - はじめかた.txt
+5. Commit changes を押します。
+6. 数分待って公開サイトをPCで開き、Ctrl+F5で再読み込みします。
 
-## GitHub Pagesで公開する手順（PC）
-1. GitHubにログインし、右上の `+` → `New repository` を選びます。
-2. Repository name に `workout-calendar` と入力します。
-3. `Public` を選び、`Create repository` を押します。
-4. リポジトリ画面の `Add file` → `Upload files` を押します。
-5. ZIPをPCで解凍し、中にある `index.html`、`manifest.webmanifest`、`sw.js`、`icon.svg` をまとめてアップロードします。ZIPファイルそのものではなく、解凍後の4ファイルをアップロードしてください。
-6. `Commit changes` を押します。
-7. リポジトリの `Settings` → `Pages` を開きます。
-8. `Build and deployment` の `Deploy from a branch` を選び、Branch を `main`、フォルダを `/(root)` にして `Save` を押します。
-9. 1〜数分待ち、Pages画面に表示された公開URLを開きます。通常は `https://ユーザー名.github.io/workout-calendar/` の形です。URLのユーザー名部分は自分のGitHubユーザー名です。
-
-## iPhoneでホーム画面に追加
-1. GitHub Pagesの公開URLをSafariで開きます（アプリ内ブラウザではなくSafari）。
-2. 共有ボタン（四角から上矢印）を押します。
-3. 下へスクロールして `ホーム画面に追加` を押します。
-4. 表示名を確認し `追加` を押します。
-
-## 更新方法
-新しいファイルをアップロードして既存ファイルを置き換え、`Commit changes` を押します。公開サイトを再読み込みしてください。今回の更新では `index.html` と `sw.js` を置き換えてください。以前の記録は同じブラウザ・同じサイトURLなら通常は残りますが、更新前に「記録を書き出す」でバックアップしてください。
+注意：このサイトはChatGPTに自動接続しません。ChatGPTの相談文をコピーし、ChatGPTでメニューを作り、その回答をサイトに貼り付けて登録します。APIキーは不要です。
